@@ -4,19 +4,101 @@
  * This is a general purpose Gradle build.
  * Learn how to create Gradle builds at https://guides.gradle.org/creating-new-gradle-builds
  */
-plugins {
-    id 'idea'
-    id 'java'
-    id 'application'
+
+buildscript {
+    ext.kotlin_version = '1.3.61'
+
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        /**
+         * This dependencies are needed so we can use plugins below in subprojects block
+         */
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "org.jetbrains.kotlin:kotlin-allopen:$kotlin_version"
+        classpath "org.springframework.boot:spring-boot-gradle-plugin:2.2.2.RELEASE"
+        classpath "io.spring.gradle:dependency-management-plugin:1.0.8.RELEASE"
+    }
 }
 
 allprojects {
-    repositories {
-        jcenter()
-    }
+    group = 'com.gajo.dontexist'
+    version = '0.0.1-SNAPSHOT'
 }
 
 
 subprojects {
-    version = "1.0"
+
+    /**
+     * Currently we have to use old syntax with "apply plugin" for subprojects dsl block, more details
+     * @ https://discuss.gradle.org/t/cannot-use-plugins-block-inside-subprojects-block/13570
+     */
+
+    apply plugin: 'java'
+    /**
+     * To target the JVM, apply the Kotlin JVM plugin. Starting with Kotlin 1.1.1, the plugin can be applied using the
+     * Gradle plugins DSL.
+     *
+     * https://kotlinlang.org/docs/reference/using-gradle.html#targeting-the-jvm => Targeting the JVM
+     */
+    apply plugin: "org.jetbrains.kotlin.jvm"
+    /**
+     * Spring AOP needs classes to be final, which by kotlin definition they are final by default. For that we have two
+     * possibilities:
+     *  1. buildscript
+     *  2. plugin (what we used below)
+     *
+     *  More details @ https://kotlinlang.org/docs/reference/compiler-plugins.html
+     */
+    apply plugin: "org.jetbrains.kotlin.plugin.spring"
+    apply plugin: 'org.springframework.boot'
+    /**
+     * Allows us not to explicitly set spring-boot-starter version numbers, instead it manages it for us.
+     * More details @ https://docs.spring.io/spring-boot/docs/current/gradle-plugin/reference/html/#managing-dependencies
+     */
+    apply plugin: "io.spring.dependency-management"
+    apply plugin: 'application'
+
+    sourceCompatibility = JavaVersion.VERSION_1_8
+
+    tasks.withType(JavaCompile) {
+        options.encoding = 'UTF-8'
+    }
+
+    /**
+     * jvmTarget => Target version of the generated JVM bytecode (1.6, 1.8, 9, 10, 11 or 12), default is 1.6
+     *
+     * More details @ https://kotlinlang.org/docs/reference/using-gradle.html
+     */
+    compileKotlin {
+        kotlinOptions.jvmTarget = JavaVersion.VERSION_1_8
+    }
+    compileTestKotlin {
+        kotlinOptions.jvmTarget = JavaVersion.VERSION_1_8
+    }
+
+    // dependencies
+    repositories {
+        jcenter()
+    }
+
+    dependencies {
+        compile 'org.springframework.boot:spring-boot-starter-web'
+        compile 'com.fasterxml.jackson.module:jackson-module-kotlin'
+        compile 'io.pivotal.spring.cloud:spring-cloud-services-starter-service-registry:2.1.4.RELEASE'
+        /**
+         * 3 Kotlin specific libraries are required for such Spring Boot web application and configured by default:
+         *
+         *      1. kotlin-stdlib-jdk8 is the Java 8 variant of Kotlin standard library
+         *      2. kotlin-reflect is Kotlin reflection library
+         *      3. jackson-module-kotlin
+         *
+         *      More details @ https://github.com/spring-guides/tut-spring-boot-kotlin#using-intellij-idea
+         */
+        compile 'org.jetbrains.kotlin:kotlin-reflect'
+        compile 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
+        compile 'com.fasterxml.jackson.module:jackson-module-kotlin'
+        testCompile 'org.springframework.boot:spring-boot-starter-test'
+    }
 }
